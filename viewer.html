@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NASC Voyage Registry</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1923;color:#d8e8f4;min-height:100vh}
+.header{background:#111e2e;border-bottom:2px solid #1e3d60;padding:14px 24px;display:flex;align-items:center;gap:16px}
+.header h1{font-size:20px;font-weight:700;color:#4fa3e0;letter-spacing:.5px}
+.header .sub{color:#3a6080;font-size:12px;margin-top:2px}
+.spacer{flex:1}
+.badge{background:#1a3a5c;color:#5ab0ff;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.stats{background:#0d1a26;border-bottom:1px solid #162030;padding:10px 24px;display:flex;gap:32px;flex-wrap:wrap}
+.stat{text-align:center}.stat .n{font-size:22px;font-weight:700;color:#4fa3e0}.stat .l{font-size:11px;color:#3a6080;margin-top:1px}
+.filters{background:#111e2e;border-bottom:1px solid #162030;padding:10px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:10px;color:#3a5a7a;text-transform:uppercase;letter-spacing:.4px}
+input,select{background:#0d1820;border:1px solid #1e3a5c;color:#b8d4e8;padding:6px 10px;border-radius:5px;font-size:12px;outline:none}
+input:focus,select:focus{border-color:#4fa3e0}
+.fg.grow{flex:1;min-width:160px}.fg.grow input{width:100%}
+.btn{padding:6px 14px;border-radius:5px;border:1px solid #2a4a6b;background:transparent;color:#6b8aaa;cursor:pointer;font-size:12px}
+.btn:hover{border-color:#4fa3e0;color:#4fa3e0}
+.result-bar{padding:8px 24px;font-size:12px;color:#2a5070;border-bottom:1px solid #0e1820}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#0b1620;color:#2a5070;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:9px 14px;border-bottom:1px solid #0e1820;text-align:left;white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:#4fa3e0}
+tbody tr{border-bottom:1px solid #0f1d2a;cursor:default}
+tbody tr:hover{background:#131f2e}
+td{padding:8px 14px;vertical-align:middle}
+.vname{color:#c8e0f4;font-weight:500}
+.cargo{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:#1a3a5c;color:#5aafff;white-space:nowrap}
+.route{color:#4a7a9a;font-size:11px}
+.date{color:#2a5a78;font-size:11px;white-space:nowrap}
+.dots{display:flex;gap:3px}
+.dot{width:7px;height:7px;border-radius:2px}
+.dot.y{background:#256044}.dot.n{background:#111e2a}
+.sb{display:inline-block;padding:1px 6px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase}
+.sc{background:#3a1a1a;color:#ff7070}.sf{background:#3a2a10;color:#ffaa44}
+.pg{display:flex;justify-content:center;align-items:center;gap:8px;padding:14px;font-size:12px;color:#2a5070;border-top:1px solid #0e1820}
+.pg button{min-width:30px;text-align:center}
+.empty{text-align:center;padding:60px;color:#1a3a50;font-size:14px}
+.loading{text-align:center;padding:50px;color:#1e4060}
+a.portlink{color:#3a80aa;text-decoration:none;font-size:11px}
+a.portlink:hover{color:#5aafff}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>⚓ NASC Voyage Registry</h1>
+    <div class="sub">Chartering Records · 2014 – 2026</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="badge" id="hBadge">Loading…</span>
+  <a href="portfolio.html" class="btn" style="text-decoration:none">Company Portfolio →</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="n" id="sTotal">–</div><div class="l">Total Voyages</div></div>
+  <div class="stat"><div class="n" id="sFiltered">–</div><div class="l">Filtered</div></div>
+  <div class="stat"><div class="n" id="sCargo">–</div><div class="l">Cargo Types</div></div>
+  <div class="stat"><div class="n" id="sYears">–</div><div class="l">Years Active</div></div>
+</div>
+
+<div class="filters">
+  <div class="fg grow">
+    <label>Search</label>
+    <input type="text" id="fQ" placeholder="vessel, port, cargo…" oninput="debounce()">
+  </div>
+  <div class="fg">
+    <label>Cargo</label>
+    <select id="fC" onchange="render()"><option value="">All cargoes</option></select>
+  </div>
+  <div class="fg">
+    <label>Year</label>
+    <select id="fY" onchange="render()"><option value="">All years</option></select>
+  </div>
+  <div class="fg">
+    <label>Load Port</label>
+    <select id="fL" onchange="render()"><option value="">All ports</option></select>
+  </div>
+  <div class="fg">
+    <label>Disch Port</label>
+    <select id="fD" onchange="render()"><option value="">All ports</option></select>
+  </div>
+  <div class="fg">
+    <label>Status</label>
+    <select id="fS" onchange="render()">
+      <option value="">All</option>
+      <option value="CANCELLED">Cancelled</option>
+      <option value="FAILED">Failed</option>
+    </select>
+  </div>
+  <div class="fg" style="justify-content:flex-end">
+    <label>&nbsp;</label>
+    <button class="btn" onclick="clearF()">Clear</button>
+  </div>
+</div>
+
+<div class="result-bar" id="resultBar"></div>
+<div class="table-wrap" id="tableWrap"><div class="loading">Loading voyage data…</div></div>
+<div class="pg" id="pg"></div>
+
+<script>
+let ALL = [], filtered = [], page = 1;
+const PER = 60;
+let dt;
+
+fetch('voyages.json').then(r=>r.json()).then(data=>{
+  ALL = data;
+  buildFilters();
+  render();
+  document.getElementById('sTotal').textContent = ALL.length.toLocaleString();
+  document.getElementById('sCargo').textContent = new Set(ALL.map(v=>v.cargo_type)).size;
+  const yrs = ALL.map(v=>v.year).filter(Boolean);
+  document.getElementById('sYears').textContent = new Set(yrs).size;
+  document.getElementById('hBadge').textContent = ALL.length.toLocaleString() + ' voyages';
+});
+
+function buildFilters(){
+  const cargos=[...new Set(ALL.map(v=>v.cargo_type))].sort();
+  const years=[...new Set(ALL.map(v=>v.year).filter(Boolean))].sort((a,b)=>b-a);
+  const lp=[...new Set(ALL.map(v=>v.load_port).filter(v=>v&&v.length<35))].sort();
+  const dp=[...new Set(ALL.map(v=>v.discharge_port).filter(v=>v&&v.length<35))].sort();
+  const add=(id,arr)=>{ const s=document.getElementById(id); arr.forEach(v=>s.innerHTML+=`<option value="${v}">${v}</option>`); };
+  add('fC',cargos); add('fY',years); add('fL',lp); add('fD',dp);
+}
+
+function getFiltered(){
+  const q=document.getElementById('fQ').value.toLowerCase();
+  const c=document.getElementById('fC').value;
+  const y=document.getElementById('fY').value;
+  const l=document.getElementById('fL').value;
+  const d=document.getElementById('fD').value;
+  const s=document.getElementById('fS').value;
+  return ALL.filter(v=>{
+    if(c && v.cargo_type!==c) return false;
+    if(y && String(v.year)!==y) return false;
+    if(l && v.load_port!==l) return false;
+    if(d && v.discharge_port!==d) return false;
+    if(s && v.status!==s) return false;
+    if(q){
+      const hay=[v.vessel_name,v.cargo_type,v.load_port,v.discharge_port,v.folder_name,v.charterer,v.notes].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function render(){
+  filtered=getFiltered();
+  document.getElementById('sFiltered').textContent=filtered.length.toLocaleString();
+  document.getElementById('resultBar').textContent = filtered.length===ALL.length ? `Showing all ${ALL.length} voyages` : `${filtered.length} of ${ALL.length} voyages`;
+  const totalPages=Math.ceil(filtered.length/PER);
+  if(page>totalPages) page=1;
+  const slice=filtered.slice((page-1)*PER, page*PER);
+
+  const tw=document.getElementById('tableWrap');
+  if(!slice.length){ tw.innerHTML='<div class="empty">No voyages match your filters</div>'; document.getElementById('pg').innerHTML=''; return; }
+
+  tw.innerHTML=`<table>
+    <thead><tr>
+      <th>Date</th><th>Vessel</th><th>Cargo</th><th>Load Port</th><th>Disch Port</th><th title="FN/Finance/B·L/Laytime">Docs</th>
+    </tr></thead>
+    <tbody>${slice.map(v=>`<tr>
+      <td class="date">${v.voyage_date||'—'}</td>
+      <td class="vname">${v.vessel_name||v.folder_name||'—'}${v.status?` <span class="sb ${v.status==='CANCELLED'?'sc':'sf'}">${v.status}</span>`:''}</td>
+      <td><span class="cargo">${abbr(v.cargo_type)}</span></td>
+      <td class="route">${v.load_port||'—'}</td>
+      <td class="route">${v.discharge_port||'—'}</td>
+      <td><div class="dots">
+        <div class="dot ${v.has_fn?'y':'n'}" title="FN"></div>
+        <div class="dot ${v.has_finance?'y':'n'}" title="Finance"></div>
+        <div class="dot ${v.has_bl?'y':'n'}" title="B/L"></div>
+        <div class="dot ${v.has_laytime?'y':'n'}" title="Laytime"></div>
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+
+  const pg=document.getElementById('pg');
+  if(totalPages<=1){pg.innerHTML='';return;}
+  pg.innerHTML=`<button class="btn" onclick="go(${page-1})" ${page===1?'disabled':''}>‹ Prev</button>
+    <span>Page ${page} / ${totalPages}</span>
+    <button class="btn" onclick="go(${page+1})" ${page===totalPages?'disabled':''}>Next ›</button>`;
+}
+
+function go(p){page=p;render();window.scrollTo(0,0);}
+function debounce(){clearTimeout(dt);dt=setTimeout(()=>{page=1;render();},280);}
+function clearF(){['fQ','fC','fY','fL','fD','fS'].forEach(id=>{const e=document.getElementById(id);e.value='';});page=1;render();}
+const ABBR={'PETROLEUM COKE':'PET COKE','CONCRETE PILES':'C.PILES','AMMONIUM NITRATE':'NH₄NO₃','AMMONIUM SULFATE':'NH₄SO₄','EAFD(ELECTRIC ARC FURNACE DUST)':'EAFD','PYROPHYLLITE + AGALMATOLITE':'PYRO','FISH MEAL IN BAGS':'FISH MEAL','NICKEL CONCENTRATE':'Ni CONC','IRON ORE PELLETS':'IO PELLETS','PHOSPHATE ROCK':'PHOS ROCK','SOYBEAN MEAL':'SOY MEAL','PKE (PALM KERNEL EXPELLER)':'PKE','WOOD PELLET':'WOOD PLT','CEMENT FIBREBOARD':'CEM BOARD','CRUDE ZINC OXIDE':'ZnO','SOLID SULPHUR':'SULPHUR','SODIUM SILICATE':'Na·SiO₂','STEEL SCRAP':'SCRAP','STEEL BILLET':'BILLET','STEEL COIL':'COIL','STEEL H-BEAM':'H-BEAM','STEEL PLATE':'PLATE','STEEL RAIL':'RAIL','DEFORMED BAR':'D-BAR','MET COKE':'MET COKE'};
+function abbr(c){return ABBR[c]||(c.length>12?c.slice(0,11)+'…':c);}
+</script>
+</body>
+</html>
